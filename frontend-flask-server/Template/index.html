@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Management</title>
+<style>
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #eef2f7; margin: 40px; color: #333; }
+.header { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; }
+.header img { height: 50px; }
+h2 { color: #2c3e50; text-shadow: 1px 1px 2px #ccc; margin: 0; }
+
+table { width: 70%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); background-color: #fff; border-radius: 6px; overflow: hidden; }
+th, td { padding: 14px 18px; text-align: left; }
+th { background-color: #2980b9; color: white; font-size: 16px; }
+tr:nth-child(even) { background-color: #f4f6f8; }
+tr:hover { background-color: #e1ecf4; }
+
+input { padding: 8px; margin-right: 5px; border-radius: 4px; border: 1px solid #ccc; }
+button { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; }
+
+.add-btn { background-color: #27ae60; color: white; }
+.add-btn:hover { background-color: #219150; }
+
+.update-btn { background-color: #f39c12; color: white; }
+.update-btn:hover { background-color: #d68910; }
+
+.delete-btn { background-color: #e74c3c; color: white; }
+.delete-btn:hover { background-color: #c0392b; }
+
+.flash { padding: 10px; margin: 10px 0; border-radius: 4px; opacity: 0; animation: fadeIn 1s forwards; }
+.flash.success { background-color: #2ecc71; color: white; }
+.flash.error { background-color: #e74c3c; color: white; }
+@keyframes fadeIn { to { opacity: 1; } }
+
+.hidden { display: none; }
+
+.add-user-card { width: 400px; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 6px 15px rgba(0,0,0,0.1); margin-top: 40px; text-align: center; }
+.add-user-card input { padding: 10px; margin: 10px 5px; border-radius: 6px; border: 1px solid #ccc; width: 180px; }
+.add-user-card button { padding: 10px 25px; margin-top: 10px; background-color: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: transform 0.2s; }
+.add-user-card button:hover { transform: scale(1.05); }
+
+.confetti { position: fixed; width: 10px; height: 10px; top: 0; animation: fall 2s linear infinite; }
+@keyframes fall { 0% { transform: translateY(0) rotate(0deg); } 100% { transform: translateY(100vh) rotate(360deg); } }
+
+#add-user-msg { margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img src="https://a0.awsstatic.com/libra-css/images/logos/aws_logo_smile_1200x630.png">
+  <h2>Welcome to Multi-Cloud DevOps</h2>
+</div>
+
+<!-- Users table -->
+<table>
+<tr>
+<th>ID</th><th>Name</th><th>Email</th><th>Actions</th>
+</tr>
+{% for user in users %}
+<tr>
+<td>{{ user.id }}</td>
+<td><span class="text">{{ user.name }}</span><input class="edit-input hidden" type="text" name="name" value="{{ user.name }}"></td>
+<td><span class="text">{{ user.email }}</span><input class="edit-input hidden" type="email" name="email" value="{{ user.email }}"></td>
+<td>
+<button class="update-btn" onclick="toggleEdit(this)">Update</button>
+<button class="delete-btn" onclick="deleteUser({{ user.id }})">Delete</button>
+<button class="save-btn hidden" onclick="saveUser({{ user.id }}, this)">Save</button>
+<button class="cancel-btn hidden" onclick="cancelEdit(this)">Cancel</button>
+</td>
+</tr>
+{% endfor %}
+</table>
+
+<!-- Add User Form -->
+<div class="add-user-card">
+<h3>Add New User</h3>
+<input type="text" id="name" placeholder="Enter Name">
+<input type="email" id="email" placeholder="Enter Email"><br>
+<button onclick="addUser()">Add User</button>
+<div id="add-user-msg"></div>
+</div>
+
+<script>
+function toggleEdit(btn) {
+  const row = btn.closest('tr');
+  row.querySelectorAll('.text').forEach(el => el.classList.add('hidden'));
+  row.querySelectorAll('.edit-input').forEach(el => el.classList.remove('hidden'));
+  btn.classList.add('hidden');
+  row.querySelector('.save-btn').classList.remove('hidden');
+  row.querySelector('.cancel-btn').classList.remove('hidden');
+}
+
+function cancelEdit(btn) {
+  const row = btn.closest('tr');
+  row.querySelectorAll('.text').forEach(el => el.classList.remove('hidden'));
+  row.querySelectorAll('.edit-input').forEach(el => el.classList.add('hidden'));
+  btn.classList.add('hidden');
+  row.querySelector('.save-btn').classList.add('hidden');
+  row.querySelector('.update-btn').classList.remove('hidden');
+}
+
+async function saveUser(userId, btn) {
+  const row = btn.closest('tr');
+  const name = row.querySelector('input[name="name"]').value;
+  const email = row.querySelector('input[name="email"]').value;
+  const response = await fetch(`/update-user/${userId}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/x-www-form-urlencoded'},
+    body: `name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`
+  });
+  const result = await response.json();
+  alert(result.message);
+  location.reload();
+}
+
+async function deleteUser(userId){
+  if(!confirm("Are you sure to delete this user?")) return;
+  const response = await fetch(`/delete-user/${userId}`, { method: 'POST' });
+  const result = await response.json();
+  alert(result.message);
+  location.reload();
+}
+
+async function addUser(){
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const msgDiv = document.getElementById('add-user-msg');
+  if(!name || !email){ alert("Enter name and email!"); return; }
+  try{
+    const response = await fetch('/add-user',{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:`name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`
+    });
+    const result = await response.json();
+    msgDiv.innerHTML = `<div class="flash ${result.status}">${result.message}</div>`;
+    if(result.status==='success'){
+      for(let i=0;i<30;i++){
+        const confetti=document.createElement('div');
+        confetti.className='confetti';
+        confetti.style.backgroundColor=`hsl(${Math.random()*360},100%,50%)`;
+        confetti.style.left=`${Math.random()*100}vw`;
+        confetti.style.animationDuration=`${Math.random()*2+1}s`;
+        document.body.appendChild(confetti);
+        setTimeout(()=>confetti.remove(),2000);
+      }
+      document.getElementById('name').value='';
+      document.getElementById('email').value='';
+      setTimeout(()=>location.reload(),1500);
+    }
+  }catch(err){
+    msgDiv.innerHTML='<div class="flash error">Something went wrong!</div>';
+    console.error(err);
+  }
+}
+</script>
+
+</body>
+</html>
